@@ -1,10 +1,7 @@
 use std::str::FromStr;
 
-fn calculate_larger_pairs(values: &[u64]) -> u64 {
-    values
-        .windows(2)
-        .map(|v| (v[0] < v[1]).then(|| 1).unwrap_or_default())
-        .sum()
+fn calculate_larger_pairs(values: &[u64]) -> usize {
+    values.windows(2).filter(|v| v[0] < v[1]).count()
 }
 
 fn main() {
