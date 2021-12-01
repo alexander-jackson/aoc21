@@ -4,9 +4,8 @@ fn calculate_larger_pairs(values: &[u64]) -> usize {
     values.windows(2).filter(|v| v[0] < v[1]).count()
 }
 
-fn main() {
-    let input: Vec<_> = std::fs::read_to_string("input.txt")
-        .unwrap()
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let input: Vec<_> = std::fs::read_to_string("input.txt")?
         .lines()
         .map(|line| u64::from_str(line).unwrap())
         .collect();
@@ -23,4 +22,6 @@ fn main() {
     let instances = calculate_larger_pairs(&values);
 
     println!("Part 2: {}", instances);
+
+    Ok(())
 }
