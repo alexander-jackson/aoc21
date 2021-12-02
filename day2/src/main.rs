@@ -29,7 +29,7 @@ impl Direction {
 #[derive(Debug)]
 struct Command {
     direction: Direction,
-    magnitude: u64,
+    magnitude: i64,
 }
 
 impl Command {
@@ -37,7 +37,7 @@ impl Command {
         let (input, (direction, _, magnitude, _)) = tuple((
             Direction::parse,
             tag(" "),
-            nom::character::complete::u64,
+            nom::character::complete::i64,
             tag("\n"),
         ))(input)?;
 
@@ -52,9 +52,33 @@ impl Command {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let input = include_str!("../sample.txt");
+    let input = include_str!("../input.txt");
     let commands = many1(Command::parse)(input)?.1;
-    dbg!(&commands);
+
+    let (pos, depth) = commands
+        .iter()
+        .fold((0, 0), |state, command| match command.direction {
+            Direction::Forward => (state.0 + command.magnitude, state.1),
+            Direction::Up => (state.0, state.1 - command.magnitude),
+            Direction::Down => (state.0, state.1 + command.magnitude),
+        });
+
+    println!("Solution 1: {}", pos * depth);
+
+    let (pos, depth, _) =
+        commands
+            .iter()
+            .fold((0, 0, 0), |state, command| match command.direction {
+                Direction::Forward => (
+                    state.0 + command.magnitude,
+                    state.1 + state.2 * command.magnitude,
+                    state.2,
+                ),
+                Direction::Up => (state.0, state.1, state.2 - command.magnitude),
+                Direction::Down => (state.0, state.1, state.2 + command.magnitude),
+            });
+
+    println!("Solution 2: {}", pos * depth);
 
     Ok(())
 }
