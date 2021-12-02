@@ -4,7 +4,7 @@ use nom::multi::many1;
 use nom::sequence::tuple;
 use nom::IResult;
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 enum Direction {
     Forward,
     Up,
@@ -26,7 +26,7 @@ impl Direction {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 struct Command {
     direction: Direction,
     magnitude: i64,
@@ -51,34 +51,90 @@ impl Command {
     }
 }
 
+#[derive(Copy, Clone, Debug, Default)]
+struct State {
+    position: i64,
+    depth: i64,
+}
+
+impl State {
+    pub fn new(position: i64, depth: i64) -> Self {
+        Self { position, depth }
+    }
+
+    fn apply(self, command: Command) -> Self {
+        let Command {
+            direction,
+            magnitude,
+        } = command;
+
+        match direction {
+            Direction::Forward => Self::new(self.position + magnitude, self.depth),
+            Direction::Up => Self::new(self.position, self.depth - magnitude),
+            Direction::Down => Self::new(self.position, self.depth + magnitude),
+        }
+    }
+
+    fn compute_answer(self) -> i64 {
+        self.position * self.depth
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default)]
+struct StateWithAim {
+    state: State,
+    aim: i64,
+}
+
+impl StateWithAim {
+    pub fn new(position: i64, depth: i64, aim: i64) -> Self {
+        Self {
+            state: State::new(position, depth),
+            aim,
+        }
+    }
+
+    fn apply(self, command: Command) -> Self {
+        let Command {
+            direction,
+            magnitude,
+        } = command;
+
+        match direction {
+            Direction::Forward => Self::new(
+                self.state.position + magnitude,
+                self.state.depth + self.aim * magnitude,
+                self.aim,
+            ),
+            Direction::Up => Self::new(self.state.position, self.state.depth, self.aim - magnitude),
+            Direction::Down => {
+                Self::new(self.state.position, self.state.depth, self.aim + magnitude)
+            }
+        }
+    }
+
+    fn compute_answer(self) -> i64 {
+        self.state.compute_answer()
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input = include_str!("../input.txt");
     let commands = many1(Command::parse)(input)?.1;
 
-    let (pos, depth) = commands
+    let state = commands
         .iter()
-        .fold((0, 0), |state, command| match command.direction {
-            Direction::Forward => (state.0 + command.magnitude, state.1),
-            Direction::Up => (state.0, state.1 - command.magnitude),
-            Direction::Down => (state.0, state.1 + command.magnitude),
+        .fold(State::default(), |state, command| state.apply(*command));
+
+    println!("Solution 1: {}", state.compute_answer());
+
+    let state = commands
+        .iter()
+        .fold(StateWithAim::default(), |state, command| {
+            state.apply(*command)
         });
 
-    println!("Solution 1: {}", pos * depth);
-
-    let (pos, depth, _) =
-        commands
-            .iter()
-            .fold((0, 0, 0), |state, command| match command.direction {
-                Direction::Forward => (
-                    state.0 + command.magnitude,
-                    state.1 + state.2 * command.magnitude,
-                    state.2,
-                ),
-                Direction::Up => (state.0, state.1, state.2 - command.magnitude),
-                Direction::Down => (state.0, state.1, state.2 + command.magnitude),
-            });
-
-    println!("Solution 2: {}", pos * depth);
+    println!("Solution 2: {}", state.compute_answer());
 
     Ok(())
 }
