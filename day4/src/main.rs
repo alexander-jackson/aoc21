@@ -9,18 +9,40 @@ use nom::{
     IResult,
 };
 
-fn parse_number(input: &str) -> IResult<&str, u32> {
-    delimited(space0, nom::character::complete::u32, space0)(input)
+#[derive(Copy, Clone, Debug)]
+enum State {
+    Marked,
+    Unmarked,
+}
+
+#[derive(Debug)]
+struct GridValue {
+    value: u32,
+    state: State,
+}
+
+impl GridValue {
+    fn parse(input: &str) -> IResult<&str, Self> {
+        let (input, value) = delimited(space0, nom::character::complete::u32, space0)(input)?;
+
+        Ok((
+            input,
+            Self {
+                value,
+                state: State::Unmarked,
+            },
+        ))
+    }
 }
 
 #[derive(Debug)]
 struct Grid {
-    values: Vec<Vec<u32>>,
+    values: Vec<Vec<GridValue>>,
 }
 
 impl Grid {
     fn parse(input: &str) -> IResult<&str, Self> {
-        let (input, values) = many1(terminated(many1(parse_number), newline))(input)?;
+        let (input, values) = many1(terminated(many1(GridValue::parse), newline))(input)?;
 
         Ok((input, Self { values }))
     }
