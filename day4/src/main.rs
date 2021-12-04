@@ -9,7 +9,7 @@ use nom::{
     IResult,
 };
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum State {
     Marked,
     Unmarked,
@@ -33,6 +33,12 @@ impl GridValue {
             },
         ))
     }
+
+    fn mark(&mut self, value: u32) {
+        if self.value == value {
+            self.state = State::Marked;
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -45,6 +51,46 @@ impl Grid {
         let (input, values) = many1(terminated(many1(GridValue::parse), newline))(input)?;
 
         Ok((input, Self { values }))
+    }
+
+    fn is_complete(&self) -> bool {
+        // Check rows first
+        let complete_row = self
+            .values
+            .iter()
+            .any(|row| row.iter().all(|v| v.state == State::Marked));
+
+        if complete_row {
+            return true;
+        }
+
+        let rows = self.values.len();
+        let columns = self.values[0].len();
+
+        let complete_column = (0..columns).any(|i| {
+            (0..rows)
+                .map(|j| self.values[j][i].state)
+                .all(|v| v == State::Marked)
+        });
+
+        complete_column
+    }
+
+    fn unmarked_sum(&self) -> u32 {
+        self.values
+            .iter()
+            .flat_map(|v| v.iter())
+            .filter_map(|v| v.state.eq(&State::Unmarked).then(|| v.value))
+            .sum()
+    }
+
+    fn mark(&mut self, value: u32) -> Option<u32> {
+        // Find the value and mark it
+        self.values
+            .iter_mut()
+            .for_each(|row| row.iter_mut().for_each(|v| v.mark(value)));
+
+        self.is_complete().then(|| value * self.unmarked_sum())
     }
 }
 
@@ -66,12 +112,26 @@ impl BingoFile {
 
         Ok((input, Self { order, grids }))
     }
+
+    fn find_winner(&mut self) -> Option<u32> {
+        for value in &self.order {
+            for grid in &mut self.grids {
+                if let Some(v) = grid.mark(*value) {
+                    return Some(v);
+                }
+            }
+        }
+
+        None
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let input = include_str!("../sample.txt");
-    let (_, bingo_file) = BingoFile::parse(input)?;
-    dbg!(&bingo_file);
+    let input = include_str!("../input.txt");
+    let (_, mut bingo_file) = BingoFile::parse(input)?;
+
+    let result = bingo_file.find_winner();
+    dbg!(&result);
 
     Ok(())
 }
