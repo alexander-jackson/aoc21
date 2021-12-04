@@ -124,6 +124,24 @@ impl BingoFile {
 
         None
     }
+
+    fn find_loser(&mut self) -> Option<u32> {
+        let mut status: Vec<bool> = (0..self.grids.len()).map(|_| false).collect();
+
+        for value in &self.order {
+            for (i, grid) in self.grids.iter_mut().enumerate() {
+                if let Some(v) = grid.mark(*value) {
+                    status[i] = true;
+
+                    if status.iter().all(|v| *v) {
+                        return Some(v);
+                    }
+                }
+            }
+        }
+
+        None
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -131,6 +149,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (_, mut bingo_file) = BingoFile::parse(input)?;
 
     let result = bingo_file.find_winner();
+    dbg!(&result);
+
+    let (_, mut bingo_file) = BingoFile::parse(input)?;
+
+    let result = bingo_file.find_loser();
     dbg!(&result);
 
     Ok(())
