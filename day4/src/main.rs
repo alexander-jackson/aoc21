@@ -148,13 +148,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input = include_str!("../input.txt");
     let (_, mut bingo_file) = BingoFile::parse(input)?;
 
-    let result = bingo_file.find_winner();
-    dbg!(&result);
+    let result = bingo_file
+        .find_winner()
+        .expect("Failed to find a winning board");
+    println!("Part 1 Solution: {}", result);
 
     let (_, mut bingo_file) = BingoFile::parse(input)?;
 
-    let result = bingo_file.find_loser();
-    dbg!(&result);
+    let result = bingo_file
+        .find_loser()
+        .expect("Failed to find a losing file");
+    println!("Part 2 Solution: {}", result);
 
     Ok(())
 }
