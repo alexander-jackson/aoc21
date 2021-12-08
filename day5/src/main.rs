@@ -52,6 +52,10 @@ impl Line {
         Ok((input, Self { start, end }))
     }
 
+    fn is_horizontal_or_vertical(&self) -> bool {
+        self.start.x == self.end.x || self.start.y == self.end.y
+    }
+
     fn points(&self) -> Vec<Point> {
         let direction = Direction::from(self.start, self.end);
 
@@ -113,24 +117,24 @@ impl Input {
         let mut covered_points = HashSet::new();
         let mut dangerous_points = HashSet::new();
 
-        self.lines.iter().for_each(|line| {
-            for point in line.points() {
-                println!("Line {:?} produced point {:?}", line, point);
-
-                if !covered_points.insert(point) {
-                    dangerous_points.insert(point);
+        self.lines
+            .iter()
+            .copied()
+            .filter(Line::is_horizontal_or_vertical)
+            .for_each(|line| {
+                for point in line.points() {
+                    if !covered_points.insert(point) {
+                        dangerous_points.insert(point);
+                    }
                 }
-            }
-        });
-
-        dbg!(&dangerous_points);
+            });
 
         dangerous_points.len()
     }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (_, input) = Input::parse(include_str!("../sample.txt"))?;
+    let (_, input) = Input::parse(include_str!("../input.txt"))?;
     let dangerous_count = input.calculate_dangerous_point_count();
     dbg!(&dangerous_count);
 
