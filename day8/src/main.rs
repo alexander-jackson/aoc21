@@ -7,6 +7,13 @@ use nom::{
     IResult,
 };
 
+fn is_unique(value: &str) -> bool {
+    match value.len() {
+        2 | 3 | 4 | 7 => true,
+        _ => false,
+    }
+}
+
 #[derive(Debug)]
 struct Entry<'a> {
     signals: Vec<&'a str>,
@@ -37,11 +44,21 @@ impl<'a> Input<'a> {
             entries,
         })(input)
     }
+
+    fn unique_digit_outputs(&self) -> usize {
+        self.entries
+            .iter()
+            .map(|e| e.outputs.iter())
+            .flatten()
+            .filter(|output| is_unique(output))
+            .count()
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let input = Input::parse(include_str!("../sample.txt"))?.1;
-    dbg!(&input);
+    let input = Input::parse(include_str!("../input.txt"))?.1;
+    let uniques = input.unique_digit_outputs();
+    dbg!(&uniques);
 
     Ok(())
 }
