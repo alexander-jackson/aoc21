@@ -9,30 +9,37 @@ use nom::{
 enum Direction {
     Horizontal,
     Vertical,
+    Diagonal,
 }
 
 impl Direction {
     fn from(start: Point, end: Point) -> Direction {
-        if start.x != end.x {
+        if start.x == end.x {
+            Direction::Vertical
+        } else if start.y == end.y {
             Direction::Horizontal
         } else {
-            Direction::Vertical
+            Direction::Diagonal
         }
     }
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 struct Point {
-    x: u32,
-    y: u32,
+    x: i32,
+    y: i32,
 }
 
 impl Point {
+    fn new(x: i32, y: i32) -> Self {
+        Self { x, y }
+    }
+
     fn parse(input: &str) -> IResult<&str, Self> {
         let (input, (x, y)) = separated_pair(
-            nom::character::complete::u32,
+            nom::character::complete::i32,
             tag(","),
-            nom::character::complete::u32,
+            nom::character::complete::i32,
         )(input)?;
 
         Ok((input, Self { x, y }))
@@ -59,6 +66,18 @@ impl Line {
     fn points(&self) -> Vec<Point> {
         let direction = Direction::from(self.start, self.end);
 
+        // Form the equation of the line
+        let m = (self.end.y - self.start.y)
+            .checked_div(self.end.x - self.start.x)
+            .unwrap_or_default();
+
+        let c = self.end.y - self.end.x * m;
+
+        // Flip the direction if we need to
+        let (lower, upper) = (self.start.x.min(self.end.x), self.start.x.max(self.end.x));
+
+        let points: Vec<_> = (lower..=upper).map(|x| Point::new(x, m * x + c)).collect();
+
         // Swap if needed
         let (start, end) = match direction {
             Direction::Horizontal => {
@@ -75,6 +94,7 @@ impl Line {
                     (self.start, self.end)
                 }
             }
+            _ => (self.start, self.end),
         };
 
         // Iterate based on the direction
@@ -97,6 +117,7 @@ impl Line {
                     })
                     .collect()
             }
+            Direction::Diagonal => points,
         }
     }
 }
@@ -131,12 +152,30 @@ impl Input {
 
         dangerous_points.len()
     }
+
+    fn calculate_dangerous_point_count_with_diagonals(&self) -> usize {
+        let mut covered_points = HashSet::new();
+        let mut dangerous_points = HashSet::new();
+
+        self.lines.iter().for_each(|line| {
+            for point in line.points() {
+                if !covered_points.insert(point) {
+                    dangerous_points.insert(point);
+                }
+            }
+        });
+
+        dangerous_points.len()
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (_, input) = Input::parse(include_str!("../input.txt"))?;
     let dangerous_count = input.calculate_dangerous_point_count();
     dbg!(&dangerous_count);
+
+    let dangerous_count_with_diagonals = input.calculate_dangerous_point_count_with_diagonals();
+    dbg!(&dangerous_count_with_diagonals);
 
     Ok(())
 }
@@ -194,6 +233,35 @@ mod tests {
             Point { x: 5, y: 5 },
             Point { x: 6, y: 5 },
             Point { x: 7, y: 5 },
+            Point { x: 8, y: 5 },
+        ];
+
+        assert_eq!(line.points(), expected);
+    }
+
+    #[test]
+    fn diagonal_lines() {
+        let line = Line {
+            start: Point { x: 8, y: 8 },
+            end: Point { x: 5, y: 5 },
+        };
+        let expected = vec![
+            Point { x: 5, y: 5 },
+            Point { x: 6, y: 6 },
+            Point { x: 7, y: 7 },
+            Point { x: 8, y: 8 },
+        ];
+
+        assert_eq!(line.points(), expected);
+
+        let line = Line {
+            start: Point { x: 5, y: 8 },
+            end: Point { x: 8, y: 5 },
+        };
+        let expected = vec![
+            Point { x: 5, y: 8 },
+            Point { x: 6, y: 7 },
+            Point { x: 7, y: 6 },
             Point { x: 8, y: 5 },
         ];
 
