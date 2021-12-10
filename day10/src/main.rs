@@ -25,29 +25,7 @@ fn get_matching_closing_char(c: char) -> char {
     }
 }
 
-fn find_incorrect_closing_character(input: &str) -> Option<char> {
-    let mut stack = Vec::new();
-
-    for c in input.chars() {
-        if is_opening_char(c) {
-            stack.push(c);
-        } else {
-            let opening_char = get_matching_open_char(c);
-
-            // Get the top of the stack
-            let top = stack.pop();
-
-            match top {
-                Some(t) if t == opening_char => (),
-                _ => return Some(c),
-            }
-        }
-    }
-
-    None
-}
-
-fn character_to_score(c: char) -> u64 {
+fn invalid_character_to_score(c: char) -> u64 {
     match c {
         ')' => 3,
         ']' => 57,
@@ -73,7 +51,7 @@ fn compute_autocomplete_score(input: String) -> u64 {
         .fold(0, |acc, x| acc * 5 + autocomplete_character_to_score(x))
 }
 
-fn find_completion_string(input: &str) -> String {
+fn evaluate_line(input: &str) -> Result<String, char> {
     let mut stack = Vec::new();
 
     for c in input.chars() {
@@ -85,18 +63,20 @@ fn find_completion_string(input: &str) -> String {
             // Get the top of the stack
             let top = stack.pop();
 
-            match top {
-                Some(t) if t == opening_char => (),
-                _ => panic!("String should not be invalid"),
+            // If it's none or the wrong character, return an error
+            if top.map(|t| t != opening_char).unwrap_or_default() {
+                return Err(c);
             }
         }
     }
 
-    stack
+    let completion_string = stack
         .into_iter()
         .rev()
         .map(get_matching_closing_char)
-        .collect()
+        .collect();
+
+    Ok(completion_string)
 }
 
 fn main() {
@@ -104,8 +84,9 @@ fn main() {
 
     let score: u64 = input
         .lines()
-        .filter_map(find_incorrect_closing_character)
-        .map(character_to_score)
+        .map(evaluate_line)
+        .filter_map(Result::err)
+        .map(invalid_character_to_score)
         .sum();
 
     println!("Part 1: {}", score);
@@ -113,8 +94,8 @@ fn main() {
     // Score each string
     let mut scores: Vec<_> = input
         .lines()
-        .filter(|l| find_incorrect_closing_character(l).is_none())
-        .map(find_completion_string)
+        .map(evaluate_line)
+        .filter_map(Result::ok)
         .map(compute_autocomplete_score)
         .collect();
 
