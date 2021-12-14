@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -26,7 +28,7 @@ impl Direction {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 struct Dot {
     x: i32,
     y: i32,
@@ -45,14 +47,16 @@ impl Dot {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Paper {
-    dots: Vec<Dot>,
+    dots: HashSet<Dot>,
 }
 
 impl Paper {
     fn parse(input: &str) -> IResult<&str, Self> {
-        map(separated_list1(newline, Dot::parse), |dots| Self { dots })(input)
+        map(separated_list1(newline, Dot::parse), |dots| Self {
+            dots: dots.into_iter().collect(),
+        })(input)
     }
 }
 
@@ -74,6 +78,55 @@ impl Instruction {
                 position,
             },
         )(input)
+    }
+
+    fn fold_with_horizontal_line(&self, paper: &Paper) -> Paper {
+        let dots = paper
+            .dots
+            .iter()
+            .copied()
+            .map(|Dot { x, y }| {
+                if y < self.position {
+                    Dot { x, y }
+                } else {
+                    let dist = y - self.position;
+                    Dot {
+                        x,
+                        y: self.position - dist,
+                    }
+                }
+            })
+            .collect();
+
+        Paper { dots }
+    }
+
+    fn fold_with_vertical_line(&self, paper: &Paper) -> Paper {
+        let dots = paper
+            .dots
+            .iter()
+            .copied()
+            .map(|Dot { x, y }| {
+                if x < self.position {
+                    Dot { x, y }
+                } else {
+                    let dist = x - self.position;
+                    Dot {
+                        x: self.position - dist,
+                        y,
+                    }
+                }
+            })
+            .collect();
+
+        Paper { dots }
+    }
+
+    fn fold(&self, paper: &Paper) -> Paper {
+        match self.direction {
+            Direction::X => self.fold_with_vertical_line(paper),
+            Direction::Y => self.fold_with_horizontal_line(paper),
+        }
     }
 }
 
@@ -97,11 +150,20 @@ impl Input {
             },
         )(input)
     }
+
+    fn fold_first(&self) -> Paper {
+        self.instructions[0].fold(&self.paper)
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let content = include_str!("../sample.txt");
+    let content = include_str!("../input.txt");
     let input = Input::parse(content)?.1;
+
+    println!("Initial dots: {}", input.paper.dots.len());
+
+    let folded = input.fold_first();
+    println!("Part 1 solution: {}", folded.dots.len());
 
     Ok(())
 }
