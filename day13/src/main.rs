@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::fmt;
 
 use nom::{
     branch::alt,
@@ -130,6 +131,29 @@ impl Instruction {
     }
 }
 
+impl fmt::Display for Paper {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Find the max values in each dimension
+        let (mx, my) = self
+            .dots
+            .iter()
+            .fold((0, 0), |(cx, cy), Dot { x, y }| (cx.max(*x), cy.max(*y)));
+
+        for y in 0..=my {
+            for x in 0..=mx {
+                let dot = Dot { x, y };
+                let c = self.dots.contains(&dot).then(|| '#').unwrap_or('.');
+
+                write!(f, "{} ", c)?;
+            }
+
+            write!(f, "\n")?;
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 struct Input {
     paper: Paper,
@@ -154,16 +178,23 @@ impl Input {
     fn fold_first(&self) -> Paper {
         self.instructions[0].fold(&self.paper)
     }
+
+    fn fold_all(&self) -> Paper {
+        self.instructions
+            .iter()
+            .fold(self.paper.clone(), |p, i| i.fold(&p))
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let content = include_str!("../input.txt");
     let input = Input::parse(content)?.1;
 
-    println!("Initial dots: {}", input.paper.dots.len());
-
     let folded = input.fold_first();
     println!("Part 1 solution: {}", folded.dots.len());
+
+    let compressed = input.fold_all();
+    println!("{}", compressed);
 
     Ok(())
 }
