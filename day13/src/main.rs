@@ -11,7 +11,7 @@ use nom::{
     IResult,
 };
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum Direction {
     X,
     Y,
@@ -81,52 +81,28 @@ impl Instruction {
         )(input)
     }
 
-    fn fold_with_horizontal_line(&self, paper: &Paper) -> Paper {
-        let dots = paper
-            .dots
-            .iter()
-            .copied()
-            .map(|Dot { x, y }| {
-                if y < self.position {
-                    Dot { x, y }
-                } else {
-                    let dist = y - self.position;
-                    Dot {
-                        x,
-                        y: self.position - dist,
-                    }
-                }
-            })
-            .collect();
+    fn apply(&self, dot: Dot) -> Dot {
+        if (self.direction == Direction::Y && dot.y < self.position)
+            || (self.direction == Direction::X && dot.x < self.position)
+        {
+            return dot;
+        }
 
-        Paper { dots }
-    }
-
-    fn fold_with_vertical_line(&self, paper: &Paper) -> Paper {
-        let dots = paper
-            .dots
-            .iter()
-            .copied()
-            .map(|Dot { x, y }| {
-                if x < self.position {
-                    Dot { x, y }
-                } else {
-                    let dist = x - self.position;
-                    Dot {
-                        x: self.position - dist,
-                        y,
-                    }
-                }
-            })
-            .collect();
-
-        Paper { dots }
+        match self.direction {
+            Direction::X => Dot {
+                x: 2 * self.position - dot.x,
+                y: dot.y,
+            },
+            Direction::Y => Dot {
+                x: dot.x,
+                y: 2 * self.position - dot.y,
+            },
+        }
     }
 
     fn fold(&self, paper: &Paper) -> Paper {
-        match self.direction {
-            Direction::X => self.fold_with_vertical_line(paper),
-            Direction::Y => self.fold_with_horizontal_line(paper),
+        Paper {
+            dots: paper.dots.iter().copied().map(|d| self.apply(d)).collect(),
         }
     }
 }
